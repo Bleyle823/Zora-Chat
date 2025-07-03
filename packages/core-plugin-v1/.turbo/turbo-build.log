@@ -1,0 +1,17 @@
+
+> @elizaos/core-plugin-v1@0.25.9 build C:\Users\Omen\Desktop\Zora-Chat-1\packages\core-plugin-v1
+> tsup --format esm --dts
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.3.5
+[34mCLI[39m Using tsup config: C:\Users\Omen\Desktop\Zora-Chat-1\packages\core-plugin-v1\tsup.config.ts
+[34mCLI[39m Target: node18
+[34mCLI[39m Cleaning output folder
+[34mESM[39m Build start
+[32mESM[39m [1mdist\index.js     [22m[32m32.83 KB[39m
+[32mESM[39m [1mdist\index.js.map [22m[32m121.46 KB[39m
+[32mESM[39m ⚡️ Build success in 389ms
+[34mDTS[39m Build start
+[32mDTS[39m ⚡️ Build success in 8396ms
+[32mDTS[39m [1mdist\index.d.ts [22m[32m93.89 KB[39m
