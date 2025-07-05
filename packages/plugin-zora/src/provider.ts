@@ -1,60 +1,65 @@
 import type { Provider, IAgentRuntime } from "@elizaos/core";
-import { CdpAgentkit } from "@coinbase/cdp-agentkit-core";
+import { createWalletClient, createPublicClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "viem/chains";
 import * as fs from "node:fs";
 
-const WALLET_DATA_FILE = "wallet_data.txt";
+const WALLET_DATA_FILE = "zora_wallet_data.json";
 
-export async function getClient(): Promise<CdpAgentkit> {
-    // Validate required environment variables first
-    const apiKeyName = process.env.CDP_API_KEY_NAME;
-    const apiKeyPrivateKey = process.env.CDP_API_KEY_PRIVATE_KEY;
+interface WalletData {
+    address: string;
+    privateKey: string;
+    network: string;
+}
 
-    if (!apiKeyName || !apiKeyPrivateKey) {
-        throw new Error("Missing required CDP API credentials. Please set CDP_API_KEY_NAME and CDP_API_KEY_PRIVATE_KEY environment variables.");
+export async function getWalletClient() {
+    const privateKey = process.env.ZORA_PRIVATE_KEY;
+    const rpcUrl = process.env.ZORA_RPC_URL || "https://sepolia.base.org";
+
+    if (!privateKey) {
+        throw new Error("Missing ZORA_PRIVATE_KEY environment variable");
     }
 
-    let walletDataStr: string | null = null;
+    // Create account from private key
+    const account = privateKeyToAccount(privateKey as `0x${string}`);
 
-    // Read existing wallet data if available
-    if (fs.existsSync(WALLET_DATA_FILE)) {
-        try {
-            walletDataStr = fs.readFileSync(WALLET_DATA_FILE, "utf8");
-        } catch (error) {
-            console.error("Error reading wallet data:", error);
-            // Continue without wallet data
-        }
-    }
+    // Create wallet client
+    const walletClient = createWalletClient({
+        account,
+        chain: baseSepolia,
+        transport: http(rpcUrl),
+    });
 
-    // Configure CDP AgentKit
-    const config = {
-        cdpWalletData: walletDataStr || undefined,
-        networkId: process.env.CDP_AGENT_KIT_NETWORK || "base-sepolia",
-        apiKeyName: apiKeyName,
-        apiKeyPrivateKey: apiKeyPrivateKey
+    // Create public client
+    const publicClient = createPublicClient({
+        chain: baseSepolia,
+        transport: http(rpcUrl),
+    });
+
+    // Save wallet data for reference
+    const walletData: WalletData = {
+        address: account.address,
+        privateKey: privateKey,
+        network: "base-sepolia"
     };
 
     try {
-        const agentkit = await CdpAgentkit.configureWithWallet(config);
-        // Save wallet data
-        const exportedWallet = await agentkit.exportWallet();
-        fs.writeFileSync(WALLET_DATA_FILE, exportedWallet);
-        return agentkit;
+        fs.writeFileSync(WALLET_DATA_FILE, JSON.stringify(walletData, null, 2));
     } catch (error) {
-        console.error("Failed to initialize CDP AgentKit:", error);
-        throw new Error(`Failed to initialize CDP AgentKit: ${error.message || 'Unknown error'}`);
+        console.warn("Warning: Could not save wallet data:", error);
     }
+
+    return { walletClient, publicClient, account };
 }
 
 export const walletProvider: Provider = {
     async get(_runtime: IAgentRuntime): Promise<string | null> {
         try {
-            const client = await getClient();
-            // Access wallet addresses using type assertion based on the known structure
-            const address = (client as unknown as { wallet: { addresses: Array<{ id: string }> } }).wallet.addresses[0].id;
-            return `AgentKit Wallet Address: ${address}`;
+            const { account } = await getWalletClient();
+            return `Zora Wallet Address: ${account.address} (Base Sepolia)`;
         } catch (error) {
-            console.error("Error in AgentKit provider:", error);
-            return `Error initializing AgentKit wallet: ${error.message}`;
+            console.error("Error in Zora wallet provider:", error);
+            return `Error initializing Zora wallet: ${error.message}`;
         }
     },
 };
